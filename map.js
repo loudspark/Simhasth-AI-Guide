@@ -21,7 +21,7 @@ if (navigator.geolocation) {
 
             console.log("GPS LAT:", lat);
             console.log("GPS LNG:", lng);
-            alert("GPS: " + lat + "," + lng);
+
             userLat = lat;
             userLng = lng;
 
@@ -117,6 +117,11 @@ function handleCommand() {
         .getElementById("userInput")
         .value
         .toLowerCase();
+
+    if (input.includes("nearest toilet")) {
+        findNearestToilet();
+        return;
+    }
 
     // NEAREST TOILET
 
@@ -384,3 +389,41 @@ line-height:22px;
 };
 
 legend.addTo(map);
+
+function findNearestToilet() {
+
+    let nearest = null;
+    let minDistance = Infinity;
+
+    toiletsData.forEach(toilet => {
+
+        const distance = getDistance(
+            userLat,
+            userLng,
+            toilet.lat,
+            toilet.lng
+        );
+
+        if (distance < minDistance) {
+            minDistance = distance;
+            nearest = toilet;
+        }
+
+    });
+
+    if (nearest) {
+
+        L.marker([nearest.lat, nearest.lng])
+            .addTo(map)
+            .bindPopup(
+                `🚻 ${nearest.name}<br>${minDistance.toFixed(2)} km away`
+            )
+            .openPopup();
+
+        map.setView([nearest.lat, nearest.lng], 16);
+
+        alert(
+            `Nearest Toilet:\n${nearest.name}\nDistance: ${minDistance.toFixed(2)} km`
+        );
+    }
+}
