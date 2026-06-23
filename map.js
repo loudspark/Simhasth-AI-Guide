@@ -62,7 +62,7 @@ if (navigator.geolocation) {
 // ----------------------------
 
 const toilets = toiletsData;
-
+const policeStations = policeData;
 toilets.forEach(toilet => {
 
     L.circleMarker(
@@ -78,6 +78,24 @@ toilets.forEach(toilet => {
             "<b>Public Toilet</b><br>" +
             toilet.name
         );
+});
+
+policeStations.forEach(police => {
+
+    L.circleMarker(
+            [police.lat, police.lng], {
+                radius: 6,
+                color: "blue",
+                fillColor: "blue",
+                fillOpacity: 1
+            }
+        )
+        .addTo(map)
+        .bindPopup(
+            "<b>Police Station</b><br>" +
+            police.name
+        );
+
 });
 
 // ----------------------------
@@ -212,11 +230,7 @@ function handleCommand() {
     else if (
         input.includes("police")
     ) {
-
-        alert(
-            "Police station search coming soon"
-        );
-
+        findNearestPolice();
     }
 
     // HOSPITAL
@@ -235,7 +249,6 @@ function handleCommand() {
         );
 
     }
-
 }
 
 // =====================================
@@ -426,4 +439,43 @@ function findNearestToilet() {
             `Nearest Toilet:\n${nearest.name}\nDistance: ${minDistance.toFixed(2)} km`
         );
     }
+}
+
+function findNearestPolice() {
+
+    let nearest = null;
+    let minDistance = Infinity;
+
+    policeData.forEach(police => {
+
+        const distance = getDistance(
+            userLat,
+            userLng,
+            police.lat,
+            police.lng
+        );
+
+        if (distance < minDistance) {
+            minDistance = distance;
+            nearest = police;
+        }
+
+    });
+
+    if (nearest) {
+
+        L.marker([nearest.lat, nearest.lng])
+            .addTo(map)
+            .bindPopup(
+                `👮 ${nearest.name}<br>${minDistance.toFixed(2)} km away`
+            )
+            .openPopup();
+
+        map.setView([nearest.lat, nearest.lng], 16);
+
+        alert(
+            `Nearest Police Station:\n${nearest.name}\nDistance: ${minDistance.toFixed(2)} km`
+        );
+    }
+
 }
