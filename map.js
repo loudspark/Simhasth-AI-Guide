@@ -62,7 +62,33 @@ if (navigator.geolocation) {
 // ----------------------------
 
 const toilets = toiletsData;
+let hospitals = [];
 const policeStations = policeData;
+getNearbyHospitals().then(data => {
+
+    hospitals = data;
+
+    hospitals.forEach(hospital => {
+
+        L.circleMarker(
+                [hospital.lat, hospital.lon], {
+                    radius: 7,
+                    color: "red",
+                    fillColor: "red",
+                    fillOpacity: 1
+                }
+            )
+            .addTo(map)
+            .bindPopup(
+                "<b>Hospital</b><br>" +
+                (hospital.tags && hospital.tags.name ?
+                    hospital.tags.name :
+                    "Unnamed Hospital")
+            );
+
+    });
+
+});
 toilets.forEach(toilet => {
 
     L.circleMarker(
@@ -235,19 +261,10 @@ function handleCommand() {
 
     // HOSPITAL
     else if (
-        input.includes("hospital")
+        input.includes("hospital") ||
+        input.includes("nearest hospital")
     ) {
-
-        alert(
-            "Hospital search coming soon"
-        );
-
-    } else {
-
-        alert(
-            "Command not recognized"
-        );
-
+        findNearestHospital();
     }
 }
 
@@ -439,6 +456,61 @@ function findNearestToilet() {
             `Nearest Toilet:\n${nearest.name}\nDistance: ${minDistance.toFixed(2)} km`
         );
     }
+}
+
+function findNearestHospital() {
+
+    let nearest = null;
+    let minDistance = Infinity;
+
+    hospitals.forEach(hospital => {
+
+        const distance = getDistance(
+            userLat,
+            userLng,
+            hospital.lat,
+            hospital.lon
+        );
+
+        if (distance < minDistance) {
+            minDistance = distance;
+            nearest = hospital;
+        }
+
+    });
+
+    if (nearest) {
+
+        L.marker([nearest.lat, nearest.lon])
+            .addTo(map)
+            .bindPopup(
+                "🏥 " +
+                (nearest.tags && nearest.tags.name ?
+                    nearest.tags.name :
+                    "Hospital") +
+                "<br>" +
+                minDistance.toFixed(2) +
+                " km away"
+            )
+            .openPopup();
+
+        map.setView(
+            [nearest.lat, nearest.lon],
+            16
+        );
+
+        alert(
+            "Nearest Hospital:\n" +
+            (nearest.tags && nearest.tags.name ?
+                nearest.tags.name :
+                "Hospital") +
+            "\nDistance: " +
+            minDistance.toFixed(2) +
+            " km"
+        );
+
+    }
+
 }
 
 function findNearestPolice() {
