@@ -4,6 +4,44 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
 }).addTo(map);
 
+getNearbyTemples().then(data => {
+
+    console.log("TEMPLES:", data);
+
+    data.forEach(temple => {
+
+        let lat = temple.lat;
+
+        let lng = temple.lon;
+
+        if (!lat && temple.center) {
+            lat = temple.center.lat;
+            lng = temple.center.lon;
+        }
+
+        if (lat && lng) {
+
+            L.circleMarker(
+                    [lat, lng], {
+                        radius: 6,
+                        color: "orange",
+                        fillColor: "orange",
+                        fillOpacity: 1
+                    }
+                )
+                .addTo(map)
+                .bindPopup(
+                    temple.tags && temple.tags.name ?
+                    temple.tags.name :
+                    "Temple"
+                );
+        }
+
+    });
+
+});
+
+
 let marker;
 let userLat = null;
 let userLng = null;
@@ -64,31 +102,48 @@ if (navigator.geolocation) {
 const toilets = toiletsData;
 let hospitals = [];
 const policeStations = policeData;
+
 getNearbyHospitals().then(data => {
 
     hospitals = data;
 
+    console.log("Total hospitals =", hospitals.length);
+
     hospitals.forEach(hospital => {
 
-        L.circleMarker(
-                [hospital.lat, hospital.lon], {
-                    radius: 7,
-                    color: "red",
-                    fillColor: "red",
-                    fillOpacity: 1
-                }
-            )
-            .addTo(map)
-            .bindPopup(
-                "<b>Hospital</b><br>" +
-                (hospital.tags && hospital.tags.name ?
-                    hospital.tags.name :
-                    "Unnamed Hospital")
-            );
+        console.log(hospital);
 
+        let lat = hospital.lat;
+        let lon = hospital.lon;
+
+        if (!lat && hospital.center) {
+            lat = hospital.center.lat;
+            lon = hospital.center.lon;
+        }
+
+        if (lat && lon) {
+
+            L.marker([lat, lon], {
+                    icon: L.divIcon({
+                        html: "➕",
+                        className: "hospital-icon",
+                        iconSize: [20, 20]
+                    })
+                })
+                .addTo(map)
+                .bindPopup(
+                    "<b>Hospital</b><br>" +
+                    (
+                        hospital.tags &&
+                        hospital.tags.name ?
+                        hospital.tags.name :
+                        "Unnamed Hospital"
+                    )
+                );
+        }
     });
-
 });
+
 toilets.forEach(toilet => {
 
     L.circleMarker(
@@ -156,11 +211,12 @@ function getDistance(lat1, lon1, lat2, lon2) {
 
 function handleCommand() {
 
-    const input =
-        document
+    const input = document
         .getElementById("userInput")
         .value
         .toLowerCase();
+
+    console.log("INPUT:", input);
 
     if (input.includes("nearest toilet")) {
         findNearestToilet();
@@ -242,7 +298,6 @@ function handleCommand() {
         input.includes("jyotirlinga")
 
     ) {
-
         map.setView(
             [23.1828, 75.7681],
             18
@@ -250,6 +305,21 @@ function handleCommand() {
 
         alert("Navigating to Mahakal");
 
+    }
+
+    // ISKCON
+    else if (
+        input.includes("iskcon") ||
+        input.includes("iskon")
+    ) {
+        map.setView([23.1546, 75.7916], 17);
+
+        L.marker([23.1546, 75.7916])
+            .addTo(map)
+            .bindPopup("ISKCON Temple Ujjain")
+            .openPopup();
+
+        alert("Navigating to ISKCON Temple");
     }
 
     // POLICE
