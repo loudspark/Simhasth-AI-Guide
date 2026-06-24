@@ -3,8 +3,134 @@ const map = L.map('map').setView([23.1765, 75.7885], 13);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
 }).addTo(map);
+let currentDestinationMarker = null;
+let currentRouteLine = null;
+async function drawRoute(startLat, startLng, endLat, endLng) {
+
+    const url =
+        `https://router.project-osrm.org/route/v1/driving/` +
+        `${startLng},${startLat};${endLng},${endLat}` +
+        `?overview=full&geometries=geojson`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    const coordinates = data.routes[0].geometry.coordinates;
+
+    const routePoints = coordinates.map(coord => [
+        coord[1],
+        coord[0]
+    ]);
+
+    if (currentRouteLine) {
+        map.removeLayer(currentRouteLine);
+    }
+
+    currentRouteLine = L.polyline(routePoints, {
+        color: "blue",
+        weight: 5
+    }).addTo(map);
+}
+
+function findNearestPlace(places) {
+
+    let nearest = null;
+    let minDistance = Infinity;
+
+    places.forEach(place => {
+
+        let lat = place.lat;
+        let lon = place.lon || place.lng;
+        if (!lat && place.center) {
+            lat = place.center.lat;
+            lon = place.center.lon;
+        }
+
+        if (lat == null || lon == null) return;
+
+        const distance = getDistance(
+            userLat,
+            userLng,
+            lat,
+            lon
+        );
+
+        if (distance < minDistance) {
+
+            minDistance = distance;
+
+            nearest = {
+                ...place,
+                lat,
+                lon
+            };
+        }
+    });
+
+    return {
+        nearest,
+        minDistance
+    };
+}
+
+function navigateToNearest(places, placeType) {
+
+    const result = findNearestPlace(places);
+
+    if (!result.nearest) {
+        alert("No " + placeType + " found");
+        return;
+    }
+
+    const nearest = result.nearest;
+
+    const redIcon = new L.Icon({
+        iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+        shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+    if (currentDestinationMarker) {
+        map.removeLayer(currentDestinationMarker);
+    }
+    currentDestinationMarker = L.marker(
+            [nearest.lat, nearest.lon], { icon: redIcon }
+        )
+        .addTo(map)
+        .bindPopup(
+            placeType + "<br>" +
+            result.minDistance.toFixed(2) +
+            " km away"
+        )
+        .openPopup();
+
+    map.setView(
+        [nearest.lat, nearest.lon],
+        16
+    );
+
+    drawRoute(
+        userLat,
+        userLng,
+        nearest.lat,
+        nearest.lon
+    );
+
+    alert(
+        "Nearest " + placeType +
+        "\nDistance: " +
+        result.minDistance.toFixed(2) +
+        " km"
+    );
+}
+
+let temples = [];
 
 getNearbyTemples().then(data => {
+
+    temples = data;
 
     console.log("TEMPLES:", data);
 
@@ -320,6 +446,12 @@ function handleCommand() {
             .openPopup();
 
         alert("Navigating to ISKCON Temple");
+    } else if (
+        input.includes("temple") ||
+        input.includes("nearest temple") ||
+        input.includes("mandir")
+    ) {
+        findNearestTemple();
     }
 
     // POLICE
@@ -491,133 +623,29 @@ line-height:22px;
 legend.addTo(map);
 
 function findNearestToilet() {
-
-    let nearest = null;
-    let minDistance = Infinity;
-
-    toiletsData.forEach(toilet => {
-
-        const distance = getDistance(
-            userLat,
-            userLng,
-            toilet.lat,
-            toilet.lng
-        );
-
-        if (distance < minDistance) {
-            minDistance = distance;
-            nearest = toilet;
-        }
-
-    });
-
-    if (nearest) {
-
-        L.marker([nearest.lat, nearest.lng])
-            .addTo(map)
-            .bindPopup(
-                `🚻 ${nearest.name}<br>${minDistance.toFixed(2)} km away`
-            )
-            .openPopup();
-
-        map.setView([nearest.lat, nearest.lng], 16);
-
-        alert(
-            `Nearest Toilet:\n${nearest.name}\nDistance: ${minDistance.toFixed(2)} km`
-        );
-    }
+    navigateToNearest(toilets, "Public Toilet");
 }
 
 function findNearestHospital() {
-
-    let nearest = null;
-    let minDistance = Infinity;
-
-    hospitals.forEach(hospital => {
-
-        const distance = getDistance(
-            userLat,
-            userLng,
-            hospital.lat,
-            hospital.lon
-        );
-
-        if (distance < minDistance) {
-            minDistance = distance;
-            nearest = hospital;
-        }
-
-    });
-
-    if (nearest) {
-
-        L.marker([nearest.lat, nearest.lon])
-            .addTo(map)
-            .bindPopup(
-                "🏥 " +
-                (nearest.tags && nearest.tags.name ?
-                    nearest.tags.name :
-                    "Hospital") +
-                "<br>" +
-                minDistance.toFixed(2) +
-                " km away"
-            )
-            .openPopup();
-
-        map.setView(
-            [nearest.lat, nearest.lon],
-            16
-        );
-
-        alert(
-            "Nearest Hospital:\n" +
-            (nearest.tags && nearest.tags.name ?
-                nearest.tags.name :
-                "Hospital") +
-            "\nDistance: " +
-            minDistance.toFixed(2) +
-            " km"
-        );
-
-    }
-
+    navigateToNearest(hospitals, "Hospital");
 }
 
 function findNearestPolice() {
 
-    let nearest = null;
-    let minDistance = Infinity;
+    console.log("POLICE ARRAY =", policeStations);
 
-    policeData.forEach(police => {
+    navigateToNearest(
+        policeStations,
+        "Police Station"
+    );
+}
 
-        const distance = getDistance(
-            userLat,
-            userLng,
-            police.lat,
-            police.lng
-        );
+function findNearestTemple() {
 
-        if (distance < minDistance) {
-            minDistance = distance;
-            nearest = police;
-        }
+    console.log("TEMPLE ARRAY =", temples);
 
-    });
-
-    if (nearest) {
-
-        L.marker([nearest.lat, nearest.lng])
-            .addTo(map)
-            .bindPopup(
-                `👮 ${nearest.name}<br>${minDistance.toFixed(2)} km away`
-            )
-            .openPopup();
-
-        map.setView([nearest.lat, nearest.lng], 16);
-
-        alert(
-            `Nearest Police Station:\n${nearest.name}\nDistance: ${minDistance.toFixed(2)} km`
-        );
-    }
-
+    navigateToNearest(
+        temples,
+        "Temple"
+    );
 }
